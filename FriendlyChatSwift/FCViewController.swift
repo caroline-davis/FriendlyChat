@@ -126,6 +126,10 @@ class FCViewController: UIViewController, UINavigationControllerDelegate {
     
     func sendMessage(data: [String:String]) {
         // TODO: create method that pushes message to the firebase database
+        // like specifying "/messages/[some_auto_id]"
+        var mdata = data
+        mdata[Constants.MessageFields.name] = displayName
+        ref.child("messages").childByAutoId().setValue(mdata)
     }
     
     func sendPhotoMessage(photoData: Data) {
