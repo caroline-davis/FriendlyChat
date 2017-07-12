@@ -17,6 +17,7 @@
 import UIKit
 import Firebase
 import FirebaseAuthUI
+import FirebaseGoogleAuthUI
 
 // MARK: - FCViewController
 
@@ -67,6 +68,10 @@ class FCViewController: UIViewController, UINavigationControllerDelegate {
     
     func configureAuth() {
         // TODO: configure firebase authentication
+        
+        // sets up the linking with the google authentication
+        let provider: [FUIAuthProvider] = [FUIGoogleAuth()]
+        FUIAuth.defaultAuthUI()?.providers = provider
         
         // listen for changes in authorization state
         _authHandle = Auth.auth().addStateDidChangeListener { (auth: Auth, user: User?) in
