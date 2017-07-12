@@ -53,7 +53,7 @@ class FCViewController: UIViewController, UINavigationControllerDelegate {
     // MARK: Life Cycle
     
     override func viewDidLoad() {
-        self.signedInStatus(isSignedIn: true)
+        configureAuth()
         
         // TODO: Handle what users see when view loads
     }
@@ -67,81 +67,109 @@ class FCViewController: UIViewController, UINavigationControllerDelegate {
     
     func configureAuth() {
         // TODO: configure firebase authentication
-    }
-    
-    func configureDatabase() {
-        // TODO: configure database to sync messages from the app to the database :D
-        // *used to be FIRDatabase. now just Database.*
-        ref = Database.database().reference()
         
-         //*used to be FIRDataSnapshot now just DataSnapshot*
-        // this is the path that listens for changes in the database - the event is the childadded which is all the new msgs added
-        _refHandle = ref.child("messages").observe(.childAdded) { (snapshot: DataSnapshot) in
-            self.messages.append(snapshot)
-            self.messagesTable.insertRows(at: [IndexPath(row: self.messages.count - 1, section: 0)], with: .automatic)
-            self.scrollToBottomMessage()
+        // listen for changes in authorization state
+        _authHandle = Auth.auth().addStateDidChangeListener { (auth: Auth, user: User?) in
+            // refresh the table data
+            self.messages.removeAll(keepingCapacity: false)
+            self.messagesTable.reloadData()
+            
+            // check if there is a current user
+            if let activeUser = user {
+                // check if the current app user is the current USER
+                if self.user != activeUser {
+                    self.user = activeUser
+                    self.signedInStatus(isSignedIn: true)
+                    // removes the text after the @ part of the email and makes it the username
+                    let name = user!.email!.components(separatedBy: "@")[0]
+                    self.displayName = name
+                }
+            } else {
+                // user must sign
+                self.signedInStatus(isSignedIn: false)
+                self.loginSession()
+            }
         }
         
     }
+
+func configureDatabase() {
+    // TODO: configure database to sync messages from the app to the database :D
+    // *used to be FIRDatabase. now just Database.*
+    ref = Database.database().reference()
     
-    func configureStorage() {
-        // TODO: configure storage using your firebase storage
+    //*used to be FIRDataSnapshot now just DataSnapshot*
+    // this is the path that listens for changes in the database - the event is the childadded which is all the new msgs added
+    _refHandle = ref.child("messages").observe(.childAdded) { (snapshot: DataSnapshot) in
+        self.messages.append(snapshot)
+        self.messagesTable.insertRows(at: [IndexPath(row: self.messages.count - 1, section: 0)], with: .automatic)
+        self.scrollToBottomMessage()
     }
     
-    deinit {
-        // TODO: set up what needs to be deinitialized when view is no longer being used
-        // otherwise the database keeps listening to the updates and it will crash the app
-        ref.child("messages").removeObserver(withHandle: _refHandle)
-    }
+}
+
+func configureStorage() {
+    // TODO: configure storage using your firebase storage
+}
+
+deinit {
+    // TODO: set up what needs to be deinitialized when view is no longer being used
+    // otherwise the database keeps listening to the updates and it will crash the app
+    ref.child("messages").removeObserver(withHandle: _refHandle)
     
-    // MARK: Remote Config
+    // unregister the user when the checking for changing the user is not needed
+    Auth.auth().removeStateDidChangeListener(_authHandle)
+}
+
+// MARK: Remote Config
+
+func configureRemoteConfig() {
+    // TODO: configure remote configuration settings
+}
+
+func fetchConfig() {
+    // TODO: update to the current coniguratation
+}
+
+// MARK: Sign In and Out
+
+func signedInStatus(isSignedIn: Bool) {
+    signInButton.isHidden = isSignedIn
+    signOutButton.isHidden = !isSignedIn
+    messagesTable.isHidden = !isSignedIn
+    messageTextField.isHidden = !isSignedIn
+    sendButton.isHidden = !isSignedIn
+    imageMessage.isHidden = !isSignedIn
     
-    func configureRemoteConfig() {
-        // TODO: configure remote configuration settings
-    }
-    
-    func fetchConfig() {
-        // TODO: update to the current coniguratation
-    }
-    
-    // MARK: Sign In and Out
-    
-    func signedInStatus(isSignedIn: Bool) {
-        signInButton.isHidden = isSignedIn
-        signOutButton.isHidden = !isSignedIn
-        messagesTable.isHidden = !isSignedIn
-        messageTextField.isHidden = !isSignedIn
-        sendButton.isHidden = !isSignedIn
-        imageMessage.isHidden = !isSignedIn
+    if (isSignedIn) {
         
-        if (isSignedIn) {
-            
-            // remove background blur (will use when showing image messages)
-            messagesTable.rowHeight = UITableViewAutomaticDimension
-            messagesTable.estimatedRowHeight = 122.0
-            backgroundBlur.effect = nil
-            messageTextField.delegate = self
-            
-            // TODO: Set up app to send and receive messages when signed in
-            configureDatabase()
-        }
+        // remove background blur (will use when showing image messages)
+        messagesTable.rowHeight = UITableViewAutomaticDimension
+        messagesTable.estimatedRowHeight = 122.0
+        backgroundBlur.effect = nil
+        messageTextField.delegate = self
+        
+        // TODO: Set up app to send and receive messages when signed in
+        configureDatabase()
     }
-    
-    func loginSession() {
-        let authViewController = FUIAuth.defaultAuthUI()!.authViewController()
-        self.present(authViewController, animated: true, completion: nil)
-    }
-    
-    // MARK: Send Message
-    
-    func sendMessage(data: [String:String]) {
-        // TODO: create method that pushes message to the firebase database
+}
+
+    // a default view controller that comeds with FIRUI
+func loginSession() {
+    let authViewController = FUIAuth.defaultAuthUI()!.authViewController()
+    self.present(authViewController, animated: true, completion: nil)
+}
+
+// MARK: Send Message
+
+func sendMessage(data: [String:String]) {
+    // TODO: create method that pushes message to the firebase database
         // like specifying "/messages/[some_auto_id]"
         var mdata = data
         mdata[Constants.MessageFields.name] = displayName
         ref.child("messages").childByAutoId().setValue(mdata)
     }
-    
+
     func sendPhotoMessage(photoData: Data) {
         // TODO: create method that pushes message w/ photo to the firebase database
     }
