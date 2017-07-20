@@ -276,11 +276,32 @@ extension FCViewController: UITableViewDelegate, UITableViewDataSource {
         // convert the type from datasnapshot to string dic so we can read it
         let message = messageSnapshot.value as! [String:String]
         let name = message[Constants.MessageFields.name] ?? "[username]"
-        let text = message[Constants.MessageFields.text] ?? "[message]"
-        cell!.textLabel?.text = name + ": " + text
-        cell!.imageView?.image = self.placeholderImage
-        
-        // TODO: update cell to display message data
+        // if photo msg then grab image  and display it
+        if let imageUrl = message[Constants.MessageFields.imageUrl] {
+            cell!.textLabel?.text = "sent by: \(name)"
+            // download and display image
+            Storage.storage().reference(forURL: imageUrl).getData(maxSize: INT64_MAX) { (data, error) in
+                guard error == nil else {
+                    print("error downloading: \(error)")
+                    return
+                }
+                
+                // display image
+                let messageImage = UIImage.init(data: data!, scale: 50)
+                // check if the cell is still on, screen if so, update cell image
+                if cell == tableView.cellForRow(at: indexPath) {
+                    DispatchQueue.main.async {
+                        cell.imageView?.image = messageImage
+                        cell.setNeedsLayout()
+                    }
+                }
+            }
+        } else {
+            // otherwise update cell for regular message type
+             let text = message[Constants.MessageFields.text] ?? "[message]"
+             cell!.textLabel?.text = name + ": " + text
+             cell!.imageView?.image = self.placeholderImage
+        }
         return cell!
     }
     
