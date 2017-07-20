@@ -115,6 +115,9 @@ func configureDatabase() {
 
 func configureStorage() {
     // TODO: configure storage using your firebase storage
+    // this is the ref to the firebase storage
+    storageRef = Storage.storage().reference()
+    
 }
 
 deinit {
@@ -156,6 +159,7 @@ func signedInStatus(isSignedIn: Bool) {
         
         // TODO: Set up app to send and receive messages when signed in
         configureDatabase()
+        configureStorage()
     }
 }
 
@@ -177,6 +181,21 @@ func sendMessage(data: [String:String]) {
 
     func sendPhotoMessage(photoData: Data) {
         // TODO: create method that pushes message w/ photo to the firebase database
+        // builds path using users id and timestamp
+        let imagePath = "chat_photos/" + Auth.auth().currentUser!.uid + "/\(Double(Date.timeIntervalSinceReferenceDate * 1000)).jpg"
+        // set content type to "image/jpeg" in firebase storage meta data
+        let metadata = StorageMetadata()
+        metadata.contentType = "image/jpeg"
+        // create a child node at imagepath with imagedata and metadata
+        storageRef!.child(imagePath).putData(photoData, metadata: metadata) { (metadata, error) in
+            if let error = error {
+                print("error uploading: \(error)")
+                return
+            }
+            
+            // use sendMessage to add imageURL to database
+            self.sendMessage(data: [Constants.MessageFields.imageUrl: self.storageRef!.child((metadata?.path)!).description])
+        }
     }
     
     // MARK: Alert
@@ -306,6 +325,7 @@ extension FCViewController: UIImagePickerControllerDelegate {
     
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [String:Any]) {
         // constant to hold the information about the photo
+        // the uiimagejpegrepresentation transforms the uidata to jpeg data for storage
         if let photo = info[UIImagePickerControllerOriginalImage] as? UIImage, let photoData = UIImageJPEGRepresentation(photo, 0.8) {
             // call function to upload photo message
             sendPhotoMessage(photoData: photoData)
