@@ -132,12 +132,40 @@ deinit {
 // MARK: Remote Config
 
 func configureRemoteConfig() {
-    // TODO: configure remote configuration settings
+    // TODO: create remote configuration settings to enable developer mode
+    let remoteConfigSettings = RemoteConfigSettings(developerModeEnabled: true)
+    remoteConfig = RemoteConfig.remoteConfig()
+    remoteConfig.configSettings = remoteConfigSettings!
 }
 
 func fetchConfig() {
     // TODO: update to the current coniguratation
-}
+    // the expiration duration is the amount of time that goes by before the app fetches a new config in seconds
+    var expirationDuration: Double = 3600
+    if remoteConfig.configSettings.isDeveloperModeEnabled {
+        // this will now always be looking to fetch a new config while developing
+        expirationDuration = 0
+    }
+    // fetchConfig
+    remoteConfig.fetch(withExpirationDuration: expirationDuration) { (status, error) in
+        if status == .success {
+            print("config fetched")
+            self.remoteConfig.activateFetched()
+            // set the length to the remote config one
+            let friendlyMsgLength = self.remoteConfig["friendly_msg_length"]
+            if friendlyMsgLength.source != .static {
+                self.msglength = friendlyMsgLength.numberValue!
+                print("friend msg length config: \(self.msglength)")
+            }
+        } else {
+            print("config not fetched")
+            print("error \(error)")
+        }
+    }
+    }
+    
+    
+
 
 // MARK: Sign In and Out
 
@@ -160,6 +188,9 @@ func signedInStatus(isSignedIn: Bool) {
         // TODO: Set up app to send and receive messages when signed in
         configureDatabase()
         configureStorage()
+        // add these in to get the remote config working
+        configureRemoteConfig()
+        fetchConfig()
     }
 }
 
