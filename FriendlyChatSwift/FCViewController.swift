@@ -311,6 +311,30 @@ extension FCViewController: UITableViewDelegate, UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
             // TODO: if message contains an image, then display the image
+        // skip if keyboard is shown
+        guard !messageTextField.isFirstResponder else { return }
+        // unpack msg from firebase data snapshot
+        let messageSnapshot: DataSnapshot! = messages[(indexPath as NSIndexPath).row]
+        let message = messageSnapshot.value as! [String: String]
+        
+        // if chosen row is regular text msg nothing happens - if it has the key imageURL then we know its a pic
+        // if tapped row with image msg then dispay image
+        if let imageUrl = message[Constants.MessageFields.imageUrl] {
+            // if image is in cache display this image
+            if let cachedImage = imageCache.object(forKey: imageUrl as NSString) {
+                showImageDisplay(cachedImage)
+            } else {
+                // if image is not caches download image from firebase
+                Storage.storage().reference(forURL: imageUrl).getData(maxSize: INT64_MAX){ (data, error) in
+                    guard error == nil else {
+                        print("Error downloading: \(error)")
+                        return
+                    }
+                    self.showImageDisplay(UIImage.init(data: data!)!)
+                }
+            }
+        }
+        
     }
     
     // MARK: Show Image Display
